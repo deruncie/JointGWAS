@@ -1,0 +1,21 @@
+---
+title: "Readme"
+output: html_document
+---
+
+When you have a set of (correlated) traits, 
+a GWAS where you test for any effect of a marker on any of the traits
+should be more powerful than a set of independent GWASs for each trait.
+However doing this requires accounting for covariances among the traits.
+In particular, we often have to account for both covariances caused by 
+genetics (or population structure) and genetics due to shared environments (residuals).
+    In this package, rather than re-estimating the covariances separately
+  for each trait, we take estimates of the covariances (say from a Multivariate Linear Mixed Model)
+  and test each marker against all traits conditional on this covariance.
+  This is equivalent to EMMAX for a single trait, but generalizes it
+  to any number of traits.
+    The package can work even if each trait is measured on only a subset of the individuals,
+in which case only the observations are used. However when data are complete
+and only two covariance matrices are need among individuals (say a kinship matrix and a diagonal matrix for the residuals),
+we can speed up the calculations considerably, so a separate function is used 
+for that case.
