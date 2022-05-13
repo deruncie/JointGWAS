@@ -119,6 +119,7 @@ fastEMMAX_ANOVAs = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.c
       cVi_design = partial_matrix_multiply_toDense(cholL_Sigma_inv,X_design,j)
       cVi_design_sparse = as(cVi_design,'dgCMatrix')
       PX_design = cVi_design - cVi_Xcov_Xcovt_Vi_Xcov_inv %*% (t_cVi_Xcov %**% cVi_design_sparse)
+      colnames(PX_design) = colnames(X_design)
 
       object = lm.fit(PX_design,PY)
 
