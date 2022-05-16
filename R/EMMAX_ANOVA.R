@@ -155,7 +155,9 @@ EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores 
       )
     }
   }
-  collect_results(results)
+  output = collect_results(results)
+  if(length(output) == 1) output = output[[1]]
+  return(output)
 }
 
 
