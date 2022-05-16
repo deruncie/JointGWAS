@@ -42,8 +42,9 @@ anova_table = function(anova) {
 #' @export
 #'
 #' @examples
-fastEMMAX_ANOVAs = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores = RcppParallel::defaultNumThreads()-1,verbose = T) {
-
+EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores = RcppParallel::defaultNumThreads()-1,verbose = T) {
+  require(foreach)
+  require(doParallel)
   # step 1: parse formula, extract the terms with "X" meaning marker, create two formulas, one for X_cov the other for X_base
   # X_cov: covariates that are constant for each test
   # X_base: model matrix for marker effects: diag(marker[,j]) %*% X_base is the design matrix for marker j
@@ -53,16 +54,18 @@ fastEMMAX_ANOVAs = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.c
   if(!'X' %in% rownames(factors) ) stop('no marker terms "X" found in formula')
   if(length(grep('X',colnames(factors[,factors['X',]==0,drop=FALSE])))) stop('character "X" is a variable name. Please re-name')
 
-  X_terms = grep('X',attr(terms_full,'term.labels'))
+  X_terms = factors['X',]>0
   if(length(X_terms) == 0) stop('no marker terms "X" found in formula')
   base_formula = update(formula,sprintf('~.-%s',paste(attr(terms_full,'term.labels')[X_terms],collapse='-')))
 
-  marker_formula = update(formula,sprintf('~.-%s-1',paste(attr(terms_full,'term.labels')[-X_terms],collapse='-')))
+  marker_formula = update(formula,sprintf('~.-%s-1',paste(c('1',attr(terms_full,'term.labels')[!X_terms]),collapse='-')))
 
   mf = model.frame(base_formula,data)
   if(!attr(attr(mf,'terms'),'response')) stop('no response specified')
-  Y = mf[,1]
+  Y = mf[[1]]
   X_cov = model.matrix(base_formula,mf)
+  qr_X_cov = qr(X_cov)
+  X_cov = X_cov[,qr_X_cov$pivot[1:qr_X_cov$rank]]
 
 
   # given a data matrix Y, matrix of covariates (constant across tests), a set
@@ -70,11 +73,7 @@ fastEMMAX_ANOVAs = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.c
   # SE(b_hat), and the F-test that all b_hat == 0 for the tests for each column
   # of Y, projecting out X_cov
 
-  require(foreach)
-  require(doParallel)
-  # require(MegaLMM)
-  ML = REML = F
-  determinants = ML || REML
+
   if(is(Y,'vector')) Y = matrix(Y)
   if(is.null(colnames(Y))) colnames(Y) = 1:ncol(Y)
   # recover()
@@ -82,19 +81,11 @@ fastEMMAX_ANOVAs = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.c
   n = nrow(Y)
   b_cov = ncol(X_cov)
 
-  # if(verbose) print('Y')
   cVi_Y = as.matrix(cholL_Sigma_inv %**% Y)
-  # cVi_Y = forwardsolve(cV_L,Y)
-  # if(verbose) print('X_cov')
   cVi_Xcov = as.matrix(cholL_Sigma_inv %**% X_cov)
   t_cVi_Xcov = t(cVi_Xcov)
-  # cVi_Xcov = forwardsolve(cV_L,X_cov)
   Xcovt_Vi_Xcov = crossprod(cVi_Xcov)
-  sXcovt_Vi_Xcov = svd(Xcovt_Vi_Xcov)
-  tol = 1e-7
-  Positive = sXcovt_Vi_Xcov$d > tol
-  b_cov = sum(Positive)
-  Xcovt_Vi_Xcov_inv = sXcovt_Vi_Xcov$v[,Positive,drop=FALSE] %*% ((1/sXcovt_Vi_Xcov$d[Positive])*t(sXcovt_Vi_Xcov$u[,Positive,drop=FALSE]))
+  Xcovt_Vi_Xcov_inv = solve(Xcovt_Vi_Xcov)
   cVi_Xcov_Xcovt_Vi_Xcov_inv = cVi_Xcov %**% Xcovt_Vi_Xcov_inv
 
   PY = cVi_Y - cVi_Xcov_Xcovt_Vi_Xcov_inv %**% (t_cVi_Xcov %**% cVi_Y)

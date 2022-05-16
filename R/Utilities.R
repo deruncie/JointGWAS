@@ -40,6 +40,14 @@ fill_missing = function(mat) {
 }
 
 
+simultaneous_diagonalize = function(A,Binvsq) {
+  sBAB = svd(t(Binvsq) %*% A %*% Binvsq)
+  O = sBAB$u
+  S = Binvsq %*% O
+  return(list(u=S,d=sBAB$d))
+}
+
+
 # base_design_matrix = function(formula,data) {
 #   m = lm(formula,data,model=T)
 #   X_base = model.matrix(m)

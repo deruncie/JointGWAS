@@ -1,6 +1,7 @@
 library(JointGWAS)
 d = data.frame(ID = 1:100)
 d$X = sample(c(0,1),nrow(d),replace=T,prob = c(.9,.1))
+d$env = rnorm(nrow(d))
 K = tcrossprod(MegaLMM::rstdnorm_mat(nrow(d),nrow(d))) + diag(1,nrow(d))
 K = K/mean(diag(K))
 rownames(K) = colnames(K) = d$ID
@@ -17,17 +18,61 @@ d_tall$Trait = factor(d_tall$Trait)
 library(lme4qtl)
 library(lme4)
 
-m = relmatLmer(y~0+Trait+X:Trait+(0+Trait|ID),d_tall,relmat = list(ID = K))
+m = relmatLmer(y~0+Trait+Trait:env + X:Trait+X:Trait:env + (0+Trait|ID),d_tall,relmat = list(ID = K))
 vars = as.data.frame(VarCorr(m))$vcov
 
 Ghat = matrix(c(vars[1],vars[3],vars[3],vars[2]),2)
 Rhat = diag(vars[4],2)
 colnames(Ghat) = colnames(Rhat) = rownames(Ghat) = rownames(Rhat) = c(1,2)
 
-cholL_Sigma_inv = make_cholL_Sigma_inv(d_tall,'y','ID','Trait',list(list(Row=K,Column=Ghat),list(Column=Rhat)))
-
 markers = matrix(d$X,nrow = nrow(d),ncol=1:2);rownames(markers) = d$ID
-res = fastEMMAX_ANOVAs(formula=y~0+Trait+X:Trait,d_tall,markers,'ID',cholL_Sigma_inv,1)
+cholL_Sigma_inv = make_cholL_Sigma_inv(d_tall,'y','ID','Trait',list(list(Row=K,Column=Ghat),list(Column=Rhat)))
+res = EMMAX_ANOVA(formula=y~0+Trait+Trait:env + X:Trait+X:Trait:env,d_tall,markers,'ID',cholL_Sigma_inv,1)
+sK = svd(K)
+sGR = simultaneous_diagonalize(Ghat,solve(chol(Rhat)))
+res2 = EMMAX_ANOVA_matrix(Y~X+env+X:env,d,markers,'ID',svd_matrices = list(sK,sGR),1)
 res
-summary(m)$coef[3:4,1] - res[[1]]$beta_hats[1,]
-anova(m)$F[-1] - res[[1]]$anova[1,2]
+res2
+summary(m)$coef
+anova(m)
+#
+# t(sK$u) %*% K %*% sK$u
+# t(sGR$S) %*% Ghat %*% sGR$S
+# t(sGR$S) %*% Rhat %*% sGR$S
+# sGR$d
+# X = model.matrix(~X,d)
+#
+# D = 1 + c(outer(sK$d,sGR$d))
+# rY = 1/sqrt(D)*(t(sK$u) %*% Y %*% sGR$S)
+# sX = t(sK$u) %*% X
+# rX = 1/sqrt(D)*(do.call(cbind,lapply(1:ncol(sX),function(i) matrix(outer(sX[,i],sGR$S),ncol=2))))
+# rX2 = 1/sqrt(D)*matrix(outer(sX,sGR$S),ncol=2)
+# # rX = (do.call(cbind,lapply(1:ncol(sX),function(i) c(sX[,rep(i,2)] %*% sGR$S))))
+# # rX = (do.call(cbind,lapply(1:ncol(sX),function(i) matrix(outer(sX[,i],sGR$S),ncol=2))))
+#
+# # NOTE: solve(crossprod(rX)) is not block-diagonal by trait, so will have to fit all traits jointly
+# # NOTE: but above code for forming rX should be useful to avoid the tn x tn operation? Unless the outer call is tn x tn (I think it's tn x t)
+#
+# summary(lm(c(rY)~0+rX))
+# summary(m)$coef
+#
+# s = kronecker(t(sGR$S),t(sK$u))
+# y = c(Y)
+# ry = 1/sqrt(D)*(s %*% y)
+# plot(ry,c(rY))
+# X2 = cbind(bdiag(X[,1],X[,1]),bdiag(X[,2],X[,2]))
+# X2 = bdiag(X,X)
+# # rX2 = 1/sqrt(D)*(s %*% X2)
+# rX2 = (s %*% X2)
+# plot(rX2[,1],rX[,1])
+#
+# Sigma = kronecker(Ghat,K) + kronecker(Rhat,diag(1,nrow(Y)))
+# diag(s %*% Sigma %*% t(s) - diag(kronecker(diag(sGR$d),diag(sK$d))))
+# diag(kronecker(diag(sGR$d),diag(sK$d))) - c(outer(sK$d,sGR$d))
+# diag(s %*% Sigma %*% t(s)) - 1 - c(outer(sK$d,sGR$d))
+#
+# f = function(formula,data,svd_matrices = list(sK,sGR)) {
+#   recover()
+# }
+# f(Y~X,d)
+
