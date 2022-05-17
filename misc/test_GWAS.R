@@ -29,6 +29,7 @@ markers = matrix(d$X,nrow = nrow(d),ncol=1:2);rownames(markers) = d$ID
 cholL_Sigma_inv = make_cholL_Sigma_inv(d_tall,'y','ID','Trait',list(list(Row=K,Column=Ghat),list(Column=Rhat)))
 res = EMMAX_ANOVA(formula=y~0+Trait+Trait:env + X:Trait+X:Trait:env,d_tall,markers,'ID',cholL_Sigma_inv,1)
 sK = svd(K)
+sK2 = simultaneous_diagonalize(K,diag(1,n))
 sGR = simultaneous_diagonalize(Ghat,Rhat)
 res2 = EMMAX_ANOVA_matrix(Y~X+env+X:env,d,markers,'ID',svd_matrices = list(sK,sGR),1)
 res
@@ -56,7 +57,7 @@ sGR = simultaneous_diagonalize(G,R)
 markers = matrix(d$X,nrow = nrow(d),ncol=1:2);rownames(markers) = d$ID
 cis_markers = list()
 cis_markers[[1]] = c(5,7,9)
-res2 = EMMAX_ANOVA_matrix(Y~X,d,markers,'ID',svd_matrices = list(sK,sGR),mc.cores = 1)
+res2 = EMMAX_ANOVA_matrix(Y~X,d,markers,'ID',svd_matrices = list(sK,sGR),mc.cores = 1,cis_markers=cis_markers)
 res2
 d_tall = data.frame(Trait = factor(rep(1:t,each=n)),X = d$X[rep(1:n,t)],y = c(Y))
 anova(lm(y~Trait+X:Trait,d_tall))
