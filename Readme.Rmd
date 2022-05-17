@@ -1,6 +1,8 @@
 ---
 title: "Readme"
-output: github_document
+output: 
+  github_document:
+    pandoc_args: "--webtex"
 editor_options: 
   markdown: 
     wrap: 72
