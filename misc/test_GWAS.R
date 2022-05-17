@@ -29,12 +29,41 @@ markers = matrix(d$X,nrow = nrow(d),ncol=1:2);rownames(markers) = d$ID
 cholL_Sigma_inv = make_cholL_Sigma_inv(d_tall,'y','ID','Trait',list(list(Row=K,Column=Ghat),list(Column=Rhat)))
 res = EMMAX_ANOVA(formula=y~0+Trait+Trait:env + X:Trait+X:Trait:env,d_tall,markers,'ID',cholL_Sigma_inv,1)
 sK = svd(K)
-sGR = simultaneous_diagonalize(Ghat,solve(chol(Rhat)))
+sGR = simultaneous_diagonalize(Ghat,Rhat)
 res2 = EMMAX_ANOVA_matrix(Y~X+env+X:env,d,markers,'ID',svd_matrices = list(sK,sGR),1)
 res
 res2
 summary(m)$coef
 anova(m)
+
+
+# testing with more traits and cis_markers
+t = 10
+n = 100
+Y = MegaLMM::rstdnorm_mat(n,t)
+d = data.frame(ID = 1:n)
+d$X = sample(c(0,1),nrow(d),replace=T,prob = c(.9,.1))
+d$env = rnorm(nrow(d))
+K = tcrossprod(MegaLMM::rstdnorm_mat(nrow(d),nrow(d))) + diag(1,nrow(d))
+K = K/mean(diag(K))
+K = diag(1,n)
+rownames(K) = colnames(K) = d$ID
+G = tcrossprod(MegaLMM::rstdnorm_mat(t,t)) + diag(1,t)
+R = tcrossprod(MegaLMM::rstdnorm_mat(t,t)) + diag(1,t)
+G = R = diag(.5,t)
+sK = svd(K)
+sGR = simultaneous_diagonalize(G,R)
+markers = matrix(d$X,nrow = nrow(d),ncol=1:2);rownames(markers) = d$ID
+cis_markers = list()
+cis_markers[[1]] = c(5,7,9)
+res2 = EMMAX_ANOVA_matrix(Y~X,d,markers,'ID',svd_matrices = list(sK,sGR),mc.cores = 1)
+res2
+d_tall = data.frame(Trait = factor(rep(1:t,each=n)),X = d$X[rep(1:n,t)],y = c(Y))
+anova(lm(y~Trait+X:Trait,d_tall))
+X1 = model.matrix(~Trait,d_tall)
+X2 = model.matrix(~X:Trait-1,d_tall)
+anova(lm(y~1+X1+X2[,cis_markers[[1]]]+X2[,-cis_markers[[1]]],d_tall))
+
 #
 # t(sK$u) %*% K %*% sK$u
 # t(sGR$S) %*% Ghat %*% sGR$S

@@ -40,7 +40,9 @@ fill_missing = function(mat) {
 }
 
 
-simultaneous_diagonalize = function(A,Binvsq) {
+simultaneous_diagonalize = function(A,B) {
+  sB = svd(B)
+  Binvsq = t(1/sqrt(sB$d)*t(sB$u))
   sBAB = svd(t(Binvsq) %*% A %*% Binvsq)
   O = sBAB$u
   S = Binvsq %*% O

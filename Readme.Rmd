@@ -27,10 +27,11 @@ There are two ways to run the joint GWAS. If your trait data are stacked
 in a single column (`y`), use `EMMAX_ANOVA`. In this case, `data` also
 needs an identifier of each trait (`Trait`).
 
-```{r}
+```{r,eval=FALSE}
 cholL_Sigma_inv = make_cholL_Sigma_inv(data,
                                        phenoID='y',rowID='ID',columnID='Trait',
-                                       covariances = list(list(Row=K,Column=Ghat),list(Column=Rhat))
+                                       covariances = list(list(Row=K,Column=Ghat),
+                                                          list(Column=Rhat))
                                        )
 results = EMMAX_ANOVA(formula=y~0+Trait+X:Trait,data,markers,'ID',cholL_Sigma_inv,mc.cores=1,verbose=TRUE)
 ```
@@ -38,10 +39,10 @@ results = EMMAX_ANOVA(formula=y~0+Trait+X:Trait,data,markers,'ID',cholL_Sigma_in
 If your trait data are in an $n \times t$ matrix (`Y`), use
 `EMMAX_ANOVA_matrix`:
 
-```{r}
+```{r,eval=FALSE}
 sK = svd(K)
-sGR = simultaneous_diagonalize(Ghat,solve(chol(Rhat)))
-res2 = EMMAX_ANOVA_matrix(formula=Y~X,data,markers,'ID',svd_matrices = list(sK,sGR),mc.cores = 1,verbose=TRUE)
+sGR = simultaneous_diagonalize(Ghat,Rhat)
+results = EMMAX_ANOVA_matrix(formula=Y~X,data,markers,'ID',svd_matrices = list(sK,sGR),mc.cores = 1,verbose=TRUE)
 
 ```
 
@@ -53,9 +54,7 @@ column `X`** in `data`. The GWAS functions will extract each term from
 `formula` including `X` and do an F-test for that term using R's `anova`
 function.
 
-parsed to identify terms involving the marker
-
-the output will be a list with 3 elements:
+The output is a list with 3 elements:
 
 -   `anova`: a data.frame with columns giving the MSE, F-statistics and
     p-values for the tests on each term in `formula` including the
@@ -80,8 +79,11 @@ n = 200
 P = matrix(c(1,rho,rho,1),ncol=2,nrow=2)
 cP = chol(P)
 X = sample(c(-1,1),size=n,replace=T)
-E = matrix(rnorm(n*2),ncol=2) %*% cP
-Y = cbind(.3*X,0) + E
+f = sqrt(rho)*rnorm(n)
+E = cbind(f,f) + sqrt(1-rho)*matrix(rnorm(n*2),ncol=2)
+# cP = chol(cov(E))
+# E = matrix(rnorm(n*2),ncol=2) %*% cP
+Y = cbind(.2*X,0) + E
 
 par(mfrow=c(1,3))
 plot(Y[,1],Y[,2],col = ifelse(X==1,2,1))
@@ -93,6 +95,7 @@ X_tall = as.matrix(Matrix::bdiag(model.matrix(~X),model.matrix(~X)))
 cPi_X_tall = as.matrix(kronecker(t(cPi),diag(1,n))%*%  X_tall)[,c(1,3,2,4)]
 print('pvalue of F-test across both traits')
 anova(lm(c(Y%*% cPi)~0+cPi_X_tall[,1:2]+cPi_X_tall[,3:4]))$Pr[2]
+# sapply(1:2,function(i) summary(lm(Y[,i]~f+X))$coef[3,4])
 ```
 
 While trait 1 is weakly associated with `X`, the association in the
@@ -196,7 +199,7 @@ components in a reduced model without the $\mathbf{XB}$ term, and then
 solving for $\mathbf{B}$ conditional on these estimates using
 generalized least squares. In this way the variance components do not
 need to be re-estimated for each marker. XX proved that EMMAX as a GWAS
-method is mathematially equivalent to GBLUP as a genomic prediction
+method is mathematically equivalent to GBLUP as a genomic prediction
 method if $\mathbf{K} = \mathbf{X X}^T/p$ for $p$ markers, and the
 marker tests and effect sizes can be extracted from the GBLUP solution.
 
@@ -204,28 +207,149 @@ We uses these latter results to perform approximate multivariate linear
 mixed model GWAS in **JointGWAS**. Given estimates
 $\widehat{\mathbf{G}}$ and $\widehat{\mathbf{R}}$ we find solutions and
 tests for $\mathbf{b} = v(\mathbf{B})$. For computational efficiency we
-project out $\widetilde{\mathbf{W}}$ from the model first and so return
+project out $\widetilde{\mathbf{W}}$ from the model first and return
 estimates and tests for $\mathbf{b}$ only.
 
-### 
+## Implementation
 
-The joint analysis of multiple correlated traits can be more powerful
-than analyses of traits individually. However, most GWAS programs are
-designed to analyse only one trait at a time.
+As mentioned above, there are two entries into the GWAS functions
+depending on whether your data is in matrix or vector form. For the same
+number of traits, the matrix function is much faster. However, it is
+limited to the case where every trait is measured on every individual.
+It is also more limited in the types of models that can be fit - models
+where there are main effects of markers across traits are not currently
+implemented in the matrix form.
 
-When you have a set of (correlated) traits, a GWAS where you test for
-any effect of a marker on any of the traits should be more powerful than
-a set of independent GWASs for each trait. However doing this requires
-accounting for covariances among the traits. In particular, we often
-have to account for both covariances caused by genetics (or population
-structure) and genetics due to shared environments (residuals). In this
-package, rather than re-estimating the covariances separately for each
-trait, we take estimates of the covariances (say from a Multivariate
-Linear Mixed Model) and test each marker against all traits conditional
-on this covariance. This is equivalent to EMMAX for a single trait, but
-generalizes it to any number of traits. The package can work even if
-each trait is measured on only a subset of the individuals, in which
-case only the observations are used. However when data are complete and
-only two covariance matrices are need among individuals (say a kinship
-matrix and a diagonal matrix for the residuals), we can speed up the
-calculations considerably, so a separate function is used for that case.
+### \``` EMMAX_ANOVA` `` usage
+
+When each trait is measured on a subset of the individuals (or some
+trait:individual combinations are missing), \``` EMMAX_ANOVA` `` must be
+used. This is the "long-form" model with trait values stacked in a
+single column vector.
+
+Start by setting up a data.frame with at minimum a column to identify
+the genotype (`genoypeID`) and a column to identify the trait (`Trait`).
+You can include other covariates that you would like, for example
+covariates that differ among the genotypes, among the traits (e.g. if
+traits are yield in different trials, you could include covariates to
+describe the trial conditions), and covariates that differ among the
+observations.
+
+Now, write the model formula for the long-form data. This should include
+a term for `Trait`, and a term for marker effects for each trait:
+`X:Trait`. Optionally you can include the other covariates and
+covariate:marker interactions. The simplest model would be:
+
+`y~Trait+X:Trait`
+
+**Note:** Remember that `X` is a special term that can only refer to
+columns of the marker matrix.
+
+Prepare your marker data in a matrix with individuals as rows and
+markers as columns. If you include column names, these will be included
+in the output. Row names are required and much include all levels of
+`data[[genotypeID]]`. Note: the marker matrix should have one row for
+each genotype, even if a genotype is present in multiple rows of `data`.
+
+Before running the GWAS, we have to prepare the error term. Typically we
+have a single kinship matrix $\mathbf{K}$ with a corresponding genetic
+covariance matrix $\widetilde{\mathbf{G}}$ and a residual covariance
+matrix $\widetilde{\mathbf{R}}$. With these, we combine them into the
+full covariance matrix $\mathbf{\Sigma}$ using the function
+`make_cholL_Sigma()` :
+
+```{r,eval=FALSE}
+cholL_Sigma_inv = make_cholL_Sigma_inv(data,
+                                       phenoID='y',rowID='ID',columnID='Trait',
+                                       covariances = list(list(Row=K,Column=Ghat),
+                                                          list(Column=Rhat))
+                                       )
+```
+
+To run this function, we pass our long-form data matrix which includes
+the phenotype column, the columns of `data` identifying genotypes (here
+called `rowID`) and traits (here called `columnID` and paired lists of
+matrices specifying components of the overall covariance. In our typical
+case we have 2 components, the pair ($\mathbf{K},\mathbf{G}$) and the
+pair (\$\\mathbf{I},\\mathbf{R}\$), but it is possible to include more
+pairs if needed. Note: if either the Row or Column argument of a pair is
+missing it is assumed to be the identity matrix.
+
+Finally, we can run the GWAS by passing these arguments to the
+`EMMAX_ANOVA` function:
+
+```{r,eval=FALSE}
+results = EMMAX_ANOVA(formula=y~Trait+X:Trait,data,markers,'ID',cholL_Sigma_inv,mc.cores=1,verbose=TRUE)
+```
+
+The `mc.cores` argument allows the tests to be parallelized over
+processor cores.
+
+### `EMMAX_ANOVA_matrix` usage
+
+When every trait is measured on every subject, the phenotype data can be
+arranged into a $n \times t$ matrix with no missing values. In this case
+we can use more efficient calculations.
+
+Start by setting up a data.frame with at minimum a column to identify
+the genotype (`genoypeID`). Note: there will be no column for trait here
+because this data.frame describes the characteristics of each genotype,
+not each trait.
+
+Form the data into a matrix `Y` with rows corresponding to the rows of
+`data`, and columns as traits. It is also possible to incorporate `Y`
+into `data` and refer to the trait matrix with its trait names in the
+formula as `cbind(trait1,trait2,trait3)`.
+
+Write the model formula *that applies individually to each trait*. If
+you have covariates that describe the genotypes, include these terms.
+Also include a term for the marker effect on a trait. The simplest model
+would be:
+
+`Y~X`
+
+**Note:** Remember that `X` is a special term that can only refer to
+columns of the marker matrix.
+
+Prepare your marker data in a matrix with individuals as rows and
+markers as columns. If you include column names, these will be included
+in the output. Row names are required and much include all levels of
+`data[[genotypeID]]`. Note: the marker matrix should have one row for
+each genotype, even if a genotype is present in multiple rows of `data`.
+
+Before running the GWAS, we have to prepare the error term. Typically we
+have a single kinship matrix $\mathbf{K}$ with a corresponding genetic
+covariance matrix $\widetilde{\mathbf{G}}$ and a residual covariance
+matrix $\widetilde{\mathbf{R}}$. We prepare the error term by taking the
+singular value decompositions of the row and column matrices separately.
+**Note**: This only works with two variance components (K + I).
+
+```{r}
+sK = simultaneous_diagonalize(K,diag(1,nrow(data))) # could be replaced with svd(K)
+sGR = simultaneous_diagonalize(Ghat,Rhat)
+```
+
+Finally, we can run the GWAS by passing these arguments to the
+`EMMAX_ANOVA_matrix` function:
+
+```{r}
+results = EMMAX_ANOVA_matrix(formula=Y~X,data,markers,'ID',svd_matrices = list(sK,sGR),mc.cores = 1,verbose=TRUE)
+```
+
+There is one additional optional argument for
+\``` EMMAX_ANOVA_matrix` ``: `cis_markers`. This is an argument
+specifically for eQTL analyses where for specific markers you can remove
+specific traits from the overall F-test of joint marker effects. Since
+cis-eQTL are so common, if a marker is in cis to one of the genes in
+`Y`, a significiant F-test for the association between this marker and
+*any gene in `Y`* is not particularly interesting because it is likely
+just a cis effect on the local gene. But we may still want to know if
+this marker is a QTL for *any other gene in `Y`*. In this case we can
+simply pull out the nearby gene(s) from the F-test and perform the test
+between the marker and the remaining genes (accounting for covariances
+among all genes in `Y`). `cis_markers` is a list with `p` elements where
+the `ith` element is a vector of columns of `Y` that should be removed
+from the F-test for marker `i`. In this case, the F-test for this marker
+will have fewer numerator degrees of freedom. The coefficients for the
+remaining columns of `Y` will be tested last by `anova` using R's
+default Type I SSs.

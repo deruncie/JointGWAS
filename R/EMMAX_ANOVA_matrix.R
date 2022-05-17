@@ -11,7 +11,7 @@ collect_results = function(results_list) {
   results
 }
 
-EMMAX_ANOVA_matrix = function(formula,data,markers,genotypeID,svd_matrices,mc.cores = RcppParallel::defaultNumThreads()-1,verbose = T) {
+EMMAX_ANOVA_matrix = function(formula,data,markers,genotypeID,svd_matrices,mc.cores = RcppParallel::defaultNumThreads()-1,verbose = T,cis_markers = NULL) {
   # svd_matrices is a list with two components:
   #   svd_GR = simultaneous_diagonalize(R,Ginvsq)
   #   svd_K = svd(K)
@@ -78,17 +78,26 @@ EMMAX_ANOVA_matrix = function(formula,data,markers,genotypeID,svd_matrices,mc.co
       # find non-zero rows of X. Generally should be a large percentage if most minor alleles are rare
       j = Matrix::rowSums(X_design != 0) != 0
 
-      # rotate X_design:
+      # rotate X_design and expand to the t traits
       rX_design = partial_matrix_multiply_toDense(rotate_rows,X_design,j)
       cVi_design = 1/sqrt(diag_vars) * do.call(cbind,lapply(1:ncol(rX_design),function(i) matrix(outer(rX_design[,i],rotate_cols),ncol=t)))
       PX_design = cVi_design - cVi_Xcov_Xcovt_Vi_Xcov_inv %*% (t_cVi_Xcov %**% cVi_design)
       colnames(PX_design) = paste(colnames(Y)[rep(1:t,each=ncol(X_design))],colnames(X_design)[rep(1:ncol(X_design),t)],sep='::')
+      assign = rep(assign,each = t)
+
+      # if cis_markers[[i]] is non-empty, reorder the columns of PX_design so that the corresponding genes are first, and set their assign value to 0
+      if(!is.null(cis_markers[[i]])) {
+        new_order = c(cis_markers[[i]],c(1:ncol(PX_design))[-cis_markers[[i]]])
+        PX_design = PX_design[,new_order]
+        assign[cis_markers[[i]]] = 0
+        assign = assign[new_order]
+      }
 
       object = lm.fit(PX_design,PY)
 
       object$df.residual = object$df.residual - b_cov*t
       object$terms = terms(marker_formula)
-      object$assign = rep(assign,each = t)
+      object$assign = assign
       class(object) = 'lm'
       p1 = 1L:object$rank
       if(object$rank>0) {
@@ -97,11 +106,11 @@ EMMAX_ANOVA_matrix = function(formula,data,markers,genotypeID,svd_matrices,mc.co
         sqrtR = NA
       }
       # Need to repeat these lines separately for each trait if Y is a matrix, otherwise we don't get the univariate anova results
-      anovas = do.call(rbind,lapply(1:ncol(PY),function(t) {
+      anovas = do.call(rbind,lapply(1:ncol(PY),function(k) {
         lm_object = list(
-          residuals = as.matrix(object$residuals)[,t],
-          fitted.values = as.matrix(object$fitted.values)[,t],
-          effects = as.matrix(object$effects)[,t],
+          residuals = as.matrix(object$residuals)[,k],
+          fitted.values = as.matrix(object$fitted.values)[,k],
+          effects = as.matrix(object$effects)[,k],
           df.residual = object$df.residual,
           rank = object$rank,
           terms = object$terms,

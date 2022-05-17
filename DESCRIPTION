@@ -5,7 +5,6 @@ Version: 0.1.0
 Author: Daniel Runcie
 Maintainer: Daniel Runcie <deruncie@ucdavis.edu>
 Description: 
-    
 LinkingTo: 
  Rcpp, RcppEigen
 Imports: 
