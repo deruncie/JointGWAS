@@ -38,6 +38,7 @@ summary(m)$coef
 anova(m)
 
 
+
 # testing with more traits and cis_markers
 t = 10
 n = 100
