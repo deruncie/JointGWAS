@@ -13,29 +13,7 @@ khatri_rao_rows = function(X,Y) {
   XY
 }
 
-#' make_cholSigma
-#'
-#' Creates a full covariance matrix for a sparse matrix of data as the sum of
-#' kronecker products of covariance matrix pairs and then computes the Cholesky decomposition, and finally the inverse of this upper-triangular matrix.
-#' If Y is a (sparse) matrix
-#' with distribution v(Y) ~ N(0,Sigma), where Sigma = \sum K_i \otimes G_i,
-#' will return the Cholesky decomposition of Sigma[j,j] where j indexes the non-NA
-#' elements of Y.
-#'
-#' @param data data.frame of observations
-#' @param phenoID name of the phenotype column in \code{data}. This vector should not have any NAs (so run \code{subset(data,!is.na(data[[phenoID]]))} first).
-#' @param rowID name of the column in \code{data} that would be the row-name of Y
-#' @param columnID name of the column in \code{data} that would be the column-name of Y
-#' @param covariances list of Row-Column pairs of covariance matrices.list(list(Row=K,Column=G),list(Row=I,Column=R)).
-#' The Row matrices should have row names, and all elements of \code{data[[rowID]]} should be present in these row names.
-#' If Row is missing, it is assumed to be the identity. The Column matrices should also have row names, and all elements
-#' of \code{data[[columnID]]} should be present in the row names of these matrices.
-#' @param sparse If TRUE and if the Cholesky decomposition of Sigma has >25% zeros, the output will be converted to a CSparseMatrix
-#'
-#' @return upper-triangle matrix with the inverse of the Cholesky decomposition.
-#' @export
-#'
-#' @examples
+
 make_cholL_Sigma_inv = function(data,phenoID,rowID,columnID,covariances,sparse=TRUE) {
   require(Matrix)
   # recover()

@@ -2,7 +2,7 @@
 % Please edit documentation in R/EMMAX_ANOVA.R
 \name{EMMAX_ANOVA}
 \alias{EMMAX_ANOVA}
-\title{Title}
+\title{Joint ANOVA GWAS for multiple correlated traits}
 \usage{
 EMMAX_ANOVA(
   formula,
@@ -11,7 +11,9 @@ EMMAX_ANOVA(
   genotypeID,
   cholL_Sigma_inv,
   mc.cores = RcppParallel::defaultNumThreads() - 1,
-  verbose = T
+  verbose = T,
+  MAC_filter = NULL,
+  MAF_filter = NULL
 )
 }
 \arguments{
@@ -35,6 +37,10 @@ matrix of the data. Typically calculated with \code{make_cholL_Sigma_inv}}
 \item{mc.cores}{Number of processor cores to use for parallel calculations}
 
 \item{verbose}{Should progress across markers be reported?}
+
+\item{MAC_filter}{minimum minor allele counts per trait}
+
+\item{MAF_filter}{minimum minor allele frequency per trait}
 }
 \value{
 list of results with three elements:
@@ -43,5 +49,6 @@ list of results with three elements:
     SEs: standard errors for each X term coefficient.
 }
 \description{
-Title
+Runs a Genome Wide Association study for multiple correlated traits, performing an ANOVA for
+each marker on the joint effect across all traits.
 }
