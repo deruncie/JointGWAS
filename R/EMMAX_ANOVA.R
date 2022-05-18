@@ -2,8 +2,8 @@ collect_results = function(results_list) {
   traits = rownames(results_list[[1]]$anova)
   results = lapply(traits,function(trait) {
     results_trait = list(
-      beta_hats = do.call(dplyr::bind_rows,lapply(results_list,function(x) x$beta_hats[,trait])),
-      SEs = do.call(dplyr::bind_rows,lapply(results_list,function(x) x$SEs[,trait])),
+      beta_hats = do.call(dplyr::bind_cols,lapply(results_list,function(x) t(x$beta_hats[,trait,drop=FALSE]))),
+      SEs = do.call(dplyr::bind_cols,lapply(results_list,function(x) t(x$SEs[,trait,drop=FALSE]))),
       anova = do.call(dplyr::bind_rows,lapply(results_list,function(x) data.frame(x$anova[trait,,drop=FALSE])))
     )
   })
