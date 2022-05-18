@@ -1,5 +1,6 @@
 library(JointGWAS)
-d = data.frame(ID = 1:100)
+n=100
+d = data.frame(ID = 1:n)
 d$X = sample(c(0,1),nrow(d),replace=T,prob = c(.9,.1))
 d$env = rnorm(nrow(d))
 K = tcrossprod(MegaLMM::rstdnorm_mat(nrow(d),nrow(d))) + diag(1,nrow(d))
@@ -37,8 +38,16 @@ res2
 summary(m)$coef
 anova(m)
 
-
-
+d_tall2 = d_tall[-c(1:(n/2)),]
+cholL_Sigma_inv = make_cholL_Sigma_inv(d_tall2,'y','ID','Trait',list(list(Row=K,Column=Ghat),list(Column=Rhat)))
+markers = do.call(cbind,lapply(1:10000,function(i) rbinom(n,1,runif(1,0,.25))));rownames(markers) = d$ID
+markers = markers[,colSums(markers)>=10 & colSums(1-markers) >= 10]
+res = EMMAX_ANOVA(formula=y~0+Trait+Trait:env + X:Trait+X:Trait:env,d_tall2,markers,'ID',cholL_Sigma_inv,1,MAF_filter = 0.05)
+qq(subset(res$anova,Trait.X..Df == 1)[,6])
+qq(subset(res$anova,Trait.X..Df == 2)[,6])
+res2 = EMMAX_ANOVA(formula=y~0+Trait+Trait:env + X:Trait+X:Trait:env,d_tall2,markers,'ID',cholL_Sigma_inv,1,MAC_filter = 0)
+qq(res2$anova$Trait.X..Pvalue[res$anova$Trait.X..Df==1])
+qq(res2$anova$Trait.X..Pvalue[res$anova$Trait.X..Df==2])
 # testing with more traits and cis_markers
 t = 10
 n = 100
