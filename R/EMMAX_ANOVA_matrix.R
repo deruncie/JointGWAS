@@ -1,15 +1,15 @@
-collect_results = function(results_list) {
-  traits = rownames(results_list[[1]]$anova)
-  results = lapply(traits,function(trait) {
-    results_trait = list(
-      beta_hats = do.call(dplyr::bind_rows,lapply(results_list,function(x) x$beta_hats[,trait])),
-      SEs = do.call(dplyr::bind_rows,lapply(results_list,function(x) x$SEs[,trait])),
-      anova = do.call(dplyr::bind_rows,lapply(results_list,function(x) data.frame(x$anova[trait,,drop=FALSE])))
-    )
-  })
-  names(results) = traits
-  results
-}
+# collect_results = function(results_list) {
+#   traits = rownames(results_list[[1]]$anova)
+#   results = lapply(traits,function(trait) {
+#     results_trait = list(
+#       beta_hats = do.call(dplyr::bind_rows,lapply(results_list,function(x) x$beta_hats[,trait])),
+#       SEs = do.call(dplyr::bind_rows,lapply(results_list,function(x) x$SEs[,trait])),
+#       anova = do.call(dplyr::bind_rows,lapply(results_list,function(x) data.frame(x$anova[trait,,drop=FALSE])))
+#     )
+#   })
+#   names(results) = traits
+#   results
+# }
 
 EMMAX_ANOVA_matrix = function(formula,data,markers,genotypeID,svd_matrices,mc.cores = RcppParallel::defaultNumThreads()-1,verbose = T,cis_markers = NULL) {
   # svd_matrices is a list with two components:
