@@ -120,7 +120,7 @@ EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores 
       X_design = Matrix::drop0(X_design)
       if(!is.null(MAF_filter) || !is.null(MAC_filter)) {
         X_design_base_NA = X_design_base
-        X_design_base_NA[nas,] = NA
+        if(any(nas)) X_design_base_NA[nas,] = NA
         n_per_coef = Matrix::colSums(X_design_base_NA != 0,na.rm=T) # count number of observations of non-NA markers
         macs = Matrix::colSums(X_design != 0,na.rm=T) # count number of non-zeros of non-NA markers
         drop_cols = rep(F,ncol(X_design))
