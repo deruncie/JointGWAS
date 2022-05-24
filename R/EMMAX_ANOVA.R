@@ -72,7 +72,7 @@ EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores 
   Y = mf[[1]]
   X_cov = model.matrix(base_formula,mf)
   qr_X_cov = qr(X_cov)
-  X_cov = X_cov[,qr_X_cov$pivot[1:qr_X_cov$rank]]
+  X_cov = X_cov[,qr_X_cov$pivot[1:qr_X_cov$rank],drop=FALSE]
 
 
   # given a data matrix Y, matrix of covariates (constant across tests), a set
@@ -100,7 +100,6 @@ EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores 
 
   data$X = 1
   X_design_base = Matrix::sparse.model.matrix(marker_formula,data)!=0
-  n_per_coef = Matrix::colSums(X_design_base != 0)
 
   if(verbose) print('Done setup')
   registerDoParallel(mc.cores)
@@ -111,12 +110,19 @@ EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores 
     foreach(i = index) %dopar% {
       # recover()
       data$X = markers[data[[genotypeID]],i]
+      nas = is.na(data$X)
+      if(any(nas)) {
+        data$X[nas] = mean(data$X,na.rm=T)
+      }
       data$X = data$X - as.numeric(names(sort(table(data$X),decreasing = T)[1]))
       X_design = Matrix::sparse.model.matrix(marker_formula,data)
       assign = attr(X_design,'assign')
       X_design = Matrix::drop0(X_design)
       if(!is.null(MAF_filter) || !is.null(MAC_filter)) {
-        macs = Matrix::colSums(X_design != 0)
+        X_design_base_NA = X_design_base
+        X_design_base_NA[nas,] = NA
+        n_per_coef = Matrix::colSums(X_design_base_NA != 0,na.rm=T) # count number of observations of non-NA markers
+        macs = Matrix::colSums(X_design != 0,na.rm=T) # count number of non-zeros of non-NA markers
         drop_cols = rep(F,ncol(X_design))
         if(!is.null(MAC_filter)) drop_cols[macs < MAC_filter] = T
         if(!is.null(MAF_filter)) drop_cols[macs/n_per_coef < MAF_filter] = T

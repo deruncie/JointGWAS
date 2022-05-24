@@ -21,12 +21,29 @@ library(lme4)
 
 m = relmatLmer(y~0+Trait+Trait:env + X:Trait+X:Trait:env + (0+Trait|ID),d_tall,relmat = list(ID = K))
 vars = as.data.frame(VarCorr(m))$vcov
+# relfac <- function(mat, method.relfac = "auto", tol.relfac.svd = 1e-10, tol.relfac.evd = 1e-10)
+# {
+#   print('asdf')
+#   rmat = Matrix::chol(mat)
+#   rownames(rmat) <- rownames(mat)
+#   colnames(rmat) <- colnames(mat)
+#
+#   return(rmat)
+# }
+# relfac.chol <- function(mat)
+# {
+#   print('asdf')
+#   Matrix::chol(mat)
+# }
+# assignInNamespace('relfac.chol',relfac.chol,ns = 'lme4qtl')
+# m2 = relmatLmer(y~0+Trait+Trait:env + X:Trait+X:Trait:env + (0+Trait|ID),d_tall,relmat = list(ID = K),method.relfac='chol')
+
 
 Ghat = matrix(c(vars[1],vars[3],vars[3],vars[2]),2)
 Rhat = diag(vars[4],2)
 colnames(Ghat) = colnames(Rhat) = rownames(Ghat) = rownames(Rhat) = c(1,2)
 
-markers = matrix(d$X,nrow = nrow(d),ncol=1:2);rownames(markers) = d$ID
+markers = matrix(d$X,nrow = nrow(d),ncol=2);rownames(markers) = d$ID
 cholL_Sigma_inv = make_cholL_Sigma_inv(d_tall,'y','ID','Trait',list(list(Row=K,Column=Ghat),list(Column=Rhat)))
 res = EMMAX_ANOVA(formula=y~0+Trait+Trait:env + X:Trait+X:Trait:env,d_tall,markers,'ID',cholL_Sigma_inv,1)
 sK = svd(K)
