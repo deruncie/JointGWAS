@@ -55,6 +55,9 @@ res2
 summary(m)$coef
 anova(m)
 
+res3 = EMMAX_ANOVA_set(formula=y~0+Trait+Trait:env + X:Trait+X:Trait:env,d_tall,markers,marker_sets = c(1,1),'ID',cholL_Sigma_inv,1)
+
+
 d_tall2 = d_tall[-c(1:(n/2)),]
 cholL_Sigma_inv = make_cholL_Sigma_inv(d_tall2,'y','ID','Trait',list(list(Row=K,Column=Ghat),list(Column=Rhat)))
 markers = do.call(cbind,lapply(1:10000,function(i) rbinom(n,1,runif(1,0,.25))));rownames(markers) = d$ID
