@@ -123,7 +123,7 @@ EMMAX_ANOVA_set = function(formula,data,markers,marker_sets,genotypeID,cholL_Sig
       for(j in length(cVi_X_matrices)) {
         sX = svd(cVi_X_matrices[[j]])
         r = which(cumsum(sX$d)/sum(sX$d) > 0.9)[1]
-        cVi_X_matrices[[j]] = sX$u[,1:r]
+        cVi_X_matrices[[j]] = sX$u[,1:r,drop=FALSE]
       }
       assign = do.call(c,lapply(1:length(cVi_X_matrices),function(j) rep(j,ncol(cVi_X_matrices[[j]]))))
       cVi_design = do.call(cbind,cVi_X_matrices)
