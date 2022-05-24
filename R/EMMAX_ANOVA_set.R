@@ -90,6 +90,7 @@ EMMAX_ANOVA_set = function(formula,data,markers,marker_sets,genotypeID,cholL_Sig
     foreach(i = index) %dopar% {
       set = which(marker_sets == levels(marker_sets)[i])
       cVi_X_matrices = list()
+      cVi_X_matrices[[1]] = matrix(0,nrow(data),ncol=0)
       for(i in set) {
         data$X = markers[data[[genotypeID]],i]
         nas = is.na(data$X)
@@ -116,11 +117,12 @@ EMMAX_ANOVA_set = function(formula,data,markers,marker_sets,genotypeID,cholL_Sig
         }
         cVi_design = partial_matrix_multiply_toDense(cholL_Sigma_inv,X_design,j)
         for(j in unique(assign)) {
-          if(length(cVi_X_matrices)<j) cVi_X_matrices[[j]] = matrix(0,nrow(X_design),nco=0)
+          if(length(cVi_X_matrices)<j) cVi_X_matrices[[j]] = matrix(0,nrow(X_design),ncol=0)
           cVi_X_matrices[[j]] = cbind(cVi_X_matrices[[j]],cVi_design[,assign == j,drop=FALSE])
         }
       }
       for(j in length(cVi_X_matrices)) {
+        if(ncol(cVi_X_matrices[[j]]) == 0) next
         sX = svd(cVi_X_matrices[[j]])
         r = which(cumsum(sX$d)/sum(sX$d) > 0.9)[1]
         cVi_X_matrices[[j]] = sX$u[,1:r,drop=FALSE]

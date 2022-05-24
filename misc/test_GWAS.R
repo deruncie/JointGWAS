@@ -55,7 +55,7 @@ res2
 summary(m)$coef
 anova(m)
 
-res3 = EMMAX_ANOVA_set(formula=y~0+Trait+Trait:env + X:Trait+X:Trait:env,d_tall,markers,marker_sets = c(1,1),'ID',cholL_Sigma_inv,1)
+res3 = EMMAX_ANOVA_set(formula=y~0+Trait+Trait:env + X:Trait+X:Trait:env,d_tall,markers,marker_sets = c(rep(1,3),rep(2,6),rep(3,1)),'ID',cholL_Sigma_inv,1)
 
 
 d_tall2 = d_tall[-c(1:(n/2)),]
