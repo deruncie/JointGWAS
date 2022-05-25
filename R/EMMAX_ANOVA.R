@@ -119,10 +119,8 @@ EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores 
       assign = attr(X_design,'assign')
       X_design = Matrix::drop0(X_design)
       if(!is.null(MAF_filter) || !is.null(MAC_filter)) {
-        X_design_base_NA = X_design_base
-        if(any(nas)) X_design_base_NA[nas,] = NA
-        n_per_coef = Matrix::colSums(X_design_base_NA != 0,na.rm=T) # count number of observations of non-NA markers
-        macs = Matrix::colSums(X_design != 0,na.rm=T) # count number of non-zeros of non-NA markers
+        n_per_coef = Matrix::colSums(X_design_base[!nas,]!=0)
+        macs = Matrix::colSums(X_design[!nas,] != 0,na.rm=T) # count number of non-zeros of non-NA markers
         drop_cols = rep(F,ncol(X_design))
         if(!is.null(MAC_filter)) drop_cols[macs < MAC_filter] = T
         if(!is.null(MAF_filter)) drop_cols[macs/n_per_coef < MAF_filter] = T
@@ -136,8 +134,8 @@ EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores 
 
       # rotate X_design:
       cVi_design = partial_matrix_multiply_toDense(cholL_Sigma_inv,X_design,j)
-      cVi_design_sparse = as(cVi_design,'dgCMatrix')
-      PX_design = cVi_design - cVi_Xcov_Xcovt_Vi_Xcov_inv %*% (t_cVi_Xcov %**% cVi_design_sparse)
+      # cVi_design_sparse = as(cVi_design,'dgCMatrix')
+      PX_design = cVi_design - cVi_Xcov_Xcovt_Vi_Xcov_inv %*% (t_cVi_Xcov %**% cVi_design)
       colnames(PX_design) = colnames(X_design)
 
       object = lm.fit(PX_design,PY)
