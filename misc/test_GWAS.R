@@ -2,6 +2,7 @@ library(JointGWAS)
 n=100
 d = data.frame(ID = 1:n)
 d$X = sample(c(0,1),nrow(d),replace=T,prob = c(.9,.1))
+# d$X = rnorm(nrow(d))
 d$env = rnorm(nrow(d))
 K = tcrossprod(MegaLMM::rstdnorm_mat(nrow(d),nrow(d))) + diag(1,nrow(d))
 K = K/mean(diag(K))

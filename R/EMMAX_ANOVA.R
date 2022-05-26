@@ -133,7 +133,11 @@ EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores 
       j = Matrix::rowSums(X_design != 0) != 0
 
       # rotate X_design:
-      cVi_design = partial_matrix_multiply_toDense(cholL_Sigma_inv,X_design,j)
+      if(any(j)) {
+        cVi_design = partial_matrix_multiply_toDense(cholL_Sigma_inv,X_design,j)
+      } else {
+        cVi_design = cholL_Sigma_inv %**% X_design
+      }
       # cVi_design_sparse = as(cVi_design,'dgCMatrix')
       PX_design = cVi_design - cVi_Xcov_Xcovt_Vi_Xcov_inv %*% (t_cVi_Xcov %**% cVi_design)
       colnames(PX_design) = colnames(X_design)
