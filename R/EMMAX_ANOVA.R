@@ -104,7 +104,7 @@ EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores 
 
   if(verbose) print('Done setup')
   registerDoParallel(mc.cores)
-  if(!is.integer(verbose) & verbose) verbose = 1000
+  if(verbose == 1) verbose = 1000
   chunks = unique(c(seq(0,ncol(markers),by = verbose*mc.cores),ncol(markers)))
   results = foreach(j = 2:length(chunks),.combine = c) %do% {
     index = seq(chunks[j-1]+1,chunks[j])
