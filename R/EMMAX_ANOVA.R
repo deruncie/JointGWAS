@@ -34,7 +34,8 @@ anova_table = function(anova) {
 #' @param data data.frame with at a minimum columns for trait and \code{genotypeID} to be used to match
 #' up with \code{markers}. MUST NOT include a column titled "X".
 #' @param markers matrix of marker genotypes with individuals as rows and rownames corresponding to the
-#' \code{genotypeID} column of \code{data}
+#' \code{genotypeID} column of \code{data}. Genotypes should be 0/1/2, although intermediate values with genotype probabilities are allowed.
+#' 0/1/2 is required for \code{MAC_filter}, \code{MAF_filter}, and \code{mean_Imputed_filter} to work correctly.
 #' @param genotypeID column of \code{data} representing the genotype identifiers (rownames of \code{markers})
 #' @param cholL_Sigma_inv lower-triangular matrix of the inverse of the Cholesky decomposition of the full variance-covariance
 #' matrix of the data. Typically calculated with \code{make_cholL_Sigma_inv}
@@ -49,7 +50,7 @@ anova_table = function(anova) {
 #'     SEs: standard errors for each X term coefficient.
 #' @export
 #'
-EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores = RcppParallel::defaultNumThreads()-1,verbose = T, MAC_filter = NULL, MAF_filter = NULL, nImputed_filter = NULL) {
+EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores = RcppParallel::defaultNumThreads()-1,verbose = T, MAC_filter = NULL, MAF_filter = NULL, mean_Imputed_filter = NULL) {
   require(foreach)
   require(doParallel)
   # step 1: parse formula, extract the terms with "X" meaning marker, create two formulas, one for X_cov the other for X_base
@@ -114,17 +115,17 @@ EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores 
       if(any(nas)) {
         data$X[nas] = mean(data$X,na.rm=T)
       }
-      data$X = data$X - as.numeric(names(sort(table(data$X),decreasing = T)[1]))
+      # data$X = data$X - as.numeric(names(sort(table(data$X),decreasing = T)[1]))  # don't shift mean - assume this genotypes are 0/1/2 coming in with 0 usually the most common allele
       X_design = Matrix::sparse.model.matrix(marker_formula,data)
       assign = attr(X_design,'assign')
       X_design = Matrix::drop0(X_design)
-      if(!is.null(MAF_filter) || !is.null(MAC_filter || !is.null(nImputed_filter))) {
+      if(!is.null(MAF_filter) || !is.null(MAC_filter || !is.null(mean_Imputed_filter))) {
         n_per_coef = Matrix::colSums(X_design_base[!nas,]!=0)
-        macs = Matrix::colSums(X_design[!nas,] != 0,na.rm=T) # count number of non-zeros of non-NA markers
+        macs = Matrix::colSums(X_design[!nas,],na.rm=T) # count number of non-0 alleles, by probability
         drop_cols = rep(F,ncol(X_design))
         if(!is.null(MAC_filter)) drop_cols[macs < MAC_filter] = T
         if(!is.null(MAF_filter)) drop_cols[macs/n_per_coef/2 < MAF_filter] = T
-        if(!is.null(nImputed_filter)) drop_cols[Matrix::colMeans(X_design_base[!data$X %in% 0:2,]) > nImputed_filter] = T # count number of observations where data$X is not an integer
+        if(!is.null(mean_Imputed_filter)) drop_cols[Matrix::colSums(X_design_base[!data$X %in% 0:2,])/n_per_coef > mean_Imputed_filter] = T # count number of observations where data$X is not an integer
         if(any(drop_cols)) {
           X_design = X_design[,!drop_cols,drop=FALSE]
           assign = assign[!drop_cols,drop=FALSE]
