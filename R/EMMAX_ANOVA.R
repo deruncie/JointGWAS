@@ -49,7 +49,7 @@ anova_table = function(anova) {
 #'     SEs: standard errors for each X term coefficient.
 #' @export
 #'
-EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores = RcppParallel::defaultNumThreads()-1,verbose = T, MAC_filter = NULL, MAF_filter = NULL) {
+EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores = RcppParallel::defaultNumThreads()-1,verbose = T, MAC_filter = NULL, MAF_filter = NULL, nImputed_filter = NULL) {
   require(foreach)
   require(doParallel)
   # step 1: parse formula, extract the terms with "X" meaning marker, create two formulas, one for X_cov the other for X_base
@@ -118,12 +118,13 @@ EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores 
       X_design = Matrix::sparse.model.matrix(marker_formula,data)
       assign = attr(X_design,'assign')
       X_design = Matrix::drop0(X_design)
-      if(!is.null(MAF_filter) || !is.null(MAC_filter)) {
+      if(!is.null(MAF_filter) || !is.null(MAC_filter || !is.null(nImputed_filter))) {
         n_per_coef = Matrix::colSums(X_design_base[!nas,]!=0)
         macs = Matrix::colSums(X_design[!nas,] != 0,na.rm=T) # count number of non-zeros of non-NA markers
         drop_cols = rep(F,ncol(X_design))
         if(!is.null(MAC_filter)) drop_cols[macs < MAC_filter] = T
-        if(!is.null(MAF_filter)) drop_cols[macs/n_per_coef < MAF_filter] = T
+        if(!is.null(MAF_filter)) drop_cols[macs/n_per_coef/2 < MAF_filter] = T
+        if(!is.null(nImputed_filter)) drop_cols[Matrix::colMeans(X_design_base[!data$X %in% 0:2,]) > nImputed_filter] = T # count number of observations where data$X is not an integer
         if(any(drop_cols)) {
           X_design = X_design[,!drop_cols,drop=FALSE]
           assign = assign[!drop_cols,drop=FALSE]
