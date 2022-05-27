@@ -65,7 +65,8 @@ EMMAX_ANOVA_matrix = function(formula,data,markers,genotypeID,svd_matrices,mc.co
 
   if(verbose) print('Done setup')
   registerDoParallel(mc.cores)
-  chunks = unique(c(seq(0,ncol(markers),by = 1000*mc.cores),ncol(markers)))
+  if(!is.integer(verbose) & verbose) verbose = 1000
+  chunks = unique(c(seq(0,ncol(markers),by = verbose*mc.cores),ncol(markers)))
   results = foreach(j = 2:length(chunks),.combine = c) %do% {
     index = seq(chunks[j-1]+1,chunks[j])
     if(verbose) print(sprintf('%d of %d',index[1],ncol(markers)))
