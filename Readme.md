@@ -1,5 +1,6 @@
 Readme
 ================
+[![DOI](https://zenodo.org/badge/492039737.svg)](https://zenodo.org/badge/latestdoi/492039737)
 
 ## JointGWAS, a package for multivariate Genome Wide Association Studies
 
