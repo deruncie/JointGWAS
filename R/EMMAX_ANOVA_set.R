@@ -29,7 +29,7 @@
 EMMAX_ANOVA_set = function(formula,data,markers,marker_sets,genotypeID,cholL_Sigma_inv,mc.cores = RcppParallel::defaultNumThreads()-1,verbose = T, MAC_filter = NULL, MAF_filter = NULL) {
   require(foreach)
   require(doParallel)
-  if(length(marker_sets) != ncol(markers)) stop('marker_sets should have same length as number of columsn of markers')
+  if(length(marker_sets) != ncol(markers)) stop('marker_sets should have same length as number of columns of markers')
   marker_sets = as.factor(marker_sets)
   if(any(is.na(markers))) stop('missing marker genotypes not allowed')
   # step 1: parse formula, extract the terms with "X" meaning marker, create two formulas, one for X_cov the other for X_base

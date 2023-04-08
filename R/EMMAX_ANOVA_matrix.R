@@ -54,7 +54,7 @@ EMMAX_ANOVA_matrix = function(formula,data,markers,genotypeID,svd_matrices,mc.co
   cVi_Y = as.matrix(1/sqrt(diag_vars)*c(rotate_rows %*% Y %*% rotate_cols))
 
   rX_cov = rotate_rows %*% X_cov
-  cVi_Xcov = 1/sqrt(diag_vars) * do.call(cbind,lapply(1:ncol(X_cov),function(i) matrix(outer(rX_cov[,i],rotate_cols),ncol=t)))
+  cVi_Xcov = 1/sqrt(diag_vars) * do.call(cbind,lapply(1:ncol(X_cov),function(i) matrix(outer(rX_cov[,i],t(rotate_cols)),ncol=t)))
 
   t_cVi_Xcov= t(cVi_Xcov)
   Xcovt_Vi_Xcov = crossprod(cVi_Xcov)
@@ -81,7 +81,7 @@ EMMAX_ANOVA_matrix = function(formula,data,markers,genotypeID,svd_matrices,mc.co
 
       # rotate X_design and expand to the t traits
       rX_design = partial_matrix_multiply_toDense(rotate_rows,X_design,j)
-      cVi_design = 1/sqrt(diag_vars) * do.call(cbind,lapply(1:ncol(rX_design),function(i) matrix(outer(rX_design[,i],rotate_cols),ncol=t)))
+      cVi_design = 1/sqrt(diag_vars) * do.call(cbind,lapply(1:ncol(rX_design),function(i) matrix(outer(rX_design[,i],t(rotate_cols)),ncol=t)))
       PX_design = cVi_design - cVi_Xcov_Xcovt_Vi_Xcov_inv %*% (t_cVi_Xcov %**% cVi_design)
       colnames(PX_design) = paste(colnames(Y)[rep(1:t,each=ncol(X_design))],colnames(X_design)[rep(1:ncol(X_design),t)],sep='::')
       assign = rep(assign,each = t)

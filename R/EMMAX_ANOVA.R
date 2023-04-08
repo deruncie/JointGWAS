@@ -120,7 +120,7 @@ EMMAX_ANOVA = function(formula,data,markers,genotypeID,cholL_Sigma_inv,mc.cores 
       X_design = Matrix::sparse.model.matrix(marker_formula,data)
       assign = attr(X_design,'assign')
       X_design = Matrix::drop0(X_design)
-      if(!is.null(MAF_filter) || !is.null(MAC_filter || !is.null(mean_Imputed_filter))) {
+      if(!is.null(MAF_filter) || !is.null(MAC_filter) || !is.null(mean_Imputed_filter)) {
         n_per_coef = Matrix::colSums(X_design_base[!nas,]!=0)
         macs = Matrix::colSums(X_design[!nas,],na.rm=T) # count number of non-0 alleles, by probability
         drop_cols = rep(F,ncol(X_design))
